@@ -15,6 +15,8 @@
     th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
     .actions { display: flex; gap: 8px; }
     .muted { color: #666; }
+    .status { min-height: 20px; margin: 0 0 12px; color: #b00020; }
+    td input[type="text"] { width: 100%; padding: 6px; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -26,6 +28,8 @@
       <input id="product-name" type="text" maxlength="50" placeholder="Nome do produto" required>
       <button type="submit">Adicionar</button>
     </form>
+
+    <p id="status" class="status" role="status"></p>
 
     <table>
       <thead>
@@ -43,29 +47,127 @@
     const form = document.getElementById("product-form");
     const nameInput = document.getElementById("product-name");
     const list = document.getElementById("product-list");
+    const status = document.getElementById("status");
     const API_BASE = window.location.port === "80" || window.location.port === "" ? "/api" : "http://localhost:8000/api";
+
+    const EDIT_INPUT_ID = "edit-input";
+
+    let products = [];
+    let editingId = null;
 
     function apiUrl(path) {
       return `${API_BASE}${path}`;
     }
 
-    async function fetchProducts() {
-      const response = await fetch(apiUrl("/products"));
-      const products = await response.json();
+    function setStatus(message) {
+      status.textContent = message;
+    }
 
+    function createCell(text) {
+      const cell = document.createElement("td");
+      cell.textContent = text;
+      return cell;
+    }
+
+    function createButton(label, action, productId) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.dataset.action = action;
+      button.dataset.id = String(productId);
+      return button;
+    }
+
+    function createActionsCell(buttons) {
+      const cell = document.createElement("td");
+      cell.className = "actions";
+      buttons.forEach((button) => cell.appendChild(button));
+      return cell;
+    }
+
+    function buildReadRow(product) {
+      const row = document.createElement("tr");
+      row.appendChild(createCell(product.id));
+      row.appendChild(createCell(product.name));
+      row.appendChild(createActionsCell([
+        createButton("Editar", "edit", product.id),
+        createButton("Excluir", "delete", product.id)
+      ]));
+      return row;
+    }
+
+    function buildEditRow(product) {
+      const row = document.createElement("tr");
+      row.appendChild(createCell(product.id));
+
+      const nameCell = document.createElement("td");
+      const input = document.createElement("input");
+      input.id = EDIT_INPUT_ID;
+      input.type = "text";
+      input.maxLength = 50;
+      input.value = product.name;
+      nameCell.appendChild(input);
+      row.appendChild(nameCell);
+
+      row.appendChild(createActionsCell([
+        createButton("Salvar", "save", product.id),
+        createButton("Cancelar", "cancel", product.id)
+      ]));
+      return row;
+    }
+
+    function render() {
       list.innerHTML = "";
       products.forEach((product) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${product.id}</td>
-          <td>${product.name}</td>
-          <td class="actions">
-            <button data-action="edit" data-id="${product.id}" data-name="${product.name}">Editar</button>
-            <button data-action="delete" data-id="${product.id}">Excluir</button>
-          </td>
-        `;
+        const row = product.id === editingId ? buildEditRow(product) : buildReadRow(product);
         list.appendChild(row);
       });
+
+      const input = document.getElementById(EDIT_INPUT_ID);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+
+    async function fetchProducts() {
+      try {
+        const response = await fetch(apiUrl("/products"));
+        if (!response.ok) {
+          setStatus(`Falha ao carregar produtos (HTTP ${response.status}).`);
+          return;
+        }
+        products = await response.json();
+        render();
+      } catch (error) {
+        setStatus("Não foi possível contatar a API.");
+      }
+    }
+
+    async function saveProduct(productId) {
+      const input = document.getElementById(EDIT_INPUT_ID);
+      if (!input) return;
+
+      const name = input.value.trim();
+      if (!name) {
+        setStatus("O nome do produto não pode ficar vazio.");
+        return;
+      }
+
+      const response = await fetch(apiUrl(`/products/${productId}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+
+      if (!response.ok) {
+        setStatus(`Falha ao salvar o produto (HTTP ${response.status}).`);
+        return;
+      }
+
+      editingId = null;
+      setStatus("");
+      await fetchProducts();
     }
 
     form.addEventListener("submit", async (event) => {
@@ -73,13 +175,19 @@
       const name = nameInput.value.trim();
       if (!name) return;
 
-      await fetch(apiUrl("/products"), {
+      const response = await fetch(apiUrl("/products"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name })
       });
 
+      if (!response.ok) {
+        setStatus(`Falha ao adicionar o produto (HTTP ${response.status}).`);
+        return;
+      }
+
       nameInput.value = "";
+      setStatus("");
       await fetchProducts();
     });
 
@@ -88,27 +196,56 @@
       if (!(target instanceof HTMLButtonElement)) return;
 
       const action = target.dataset.action;
-      const id = target.dataset.id;
-      if (!id) return;
+      const productId = Number(target.dataset.id);
+      if (!Number.isInteger(productId)) return;
 
-      if (action === "delete") {
-        await fetch(apiUrl(`/products/${id}`), { method: "DELETE" });
-        await fetchProducts();
+      if (action === "edit") {
+        editingId = productId;
+        setStatus("");
+        render();
         return;
       }
 
-      if (action === "edit") {
-        const currentName = target.dataset.name || "";
-        const newName = prompt("Novo nome do produto:", currentName);
-        if (!newName) return;
+      if (action === "cancel") {
+        editingId = null;
+        setStatus("");
+        render();
+        return;
+      }
 
-        await fetch(apiUrl(`/products/${id}`), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newName.trim() })
-        });
+      if (action === "save") {
+        await saveProduct(productId);
+        return;
+      }
 
+      if (action === "delete") {
+        const response = await fetch(apiUrl(`/products/${productId}`), { method: "DELETE" });
+        if (!response.ok) {
+          setStatus(`Falha ao excluir o produto (HTTP ${response.status}).`);
+          return;
+        }
+        if (editingId === productId) {
+          editingId = null;
+        }
+        setStatus("");
         await fetchProducts();
+      }
+    });
+
+    list.addEventListener("keydown", async (event) => {
+      if (event.target.id !== EDIT_INPUT_ID || editingId === null) return;
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        await saveProduct(editingId);
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        editingId = null;
+        setStatus("");
+        render();
       }
     });
 

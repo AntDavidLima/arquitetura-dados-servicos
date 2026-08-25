@@ -28,7 +28,8 @@ services:
       DB_PASSWORD: app_pass
       DB_NAME: products_db
     depends_on:
-      - db_oltp
+      db_oltp:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -44,6 +45,11 @@ services:
     volumes:
       - oltp_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d products_db"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
     networks:
       - app-network
 
