@@ -1,8 +1,7 @@
-version: "3.8"
-
 services:
   proxy:
     build: ./nginx
+    image: ${DOCKER_NAMESPACE:-local}/arqds-proxy:${IMAGE_TAG:-latest}
     container_name: proxy_reverso
     ports:
       - "80:80"
@@ -14,12 +13,14 @@ services:
 
   frontend:
     build: ./frontend
+    image: ${DOCKER_NAMESPACE:-local}/arqds-frontend:${IMAGE_TAG:-latest}
     container_name: web_frontend
     networks:
       - app-network
 
   backend:
     build: ./backend
+    image: ${DOCKER_NAMESPACE:-local}/arqds-backend:${IMAGE_TAG:-latest}
     container_name: api_backend
     environment:
       DB_HOST: db_oltp
