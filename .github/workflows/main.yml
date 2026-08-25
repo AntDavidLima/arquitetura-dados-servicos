@@ -45,16 +45,23 @@ jobs:
       - name: Subir os containeres
         run: docker compose up -d
 
-      - name: Aguardar o proxy responder na porta 80
+      - name: Aguardar a aplicação responder na porta 80
         run: |
-          for tentativa in $(seq 1 30); do
-            if curl -fsS http://localhost/ > /dev/null 2>&1; then
-              echo "Proxy respondeu na tentativa $tentativa."
+          # Esperar apenas em "/" libera cedo demais: o frontend é um Nginx
+          # estático e sobe quase instantaneamente, enquanto o backend ainda
+          # está iniciando o uvicorn e conectando no Postgres — nessa janela
+          # a API responde 502. Por isso a espera inclui /api/products, que
+          # só responde quando proxy, backend e banco estão todos prontos.
+          for tentativa in $(seq 1 45); do
+            if curl -fsS http://localhost/ > /dev/null 2>&1 \
+              && curl -fsS http://localhost/api/products > /dev/null 2>&1; then
+              echo "Frontend e API responderam na tentativa $tentativa."
               exit 0
             fi
             sleep 2
           done
-          echo "O proxy não respondeu dentro de 60 segundos."
+          echo "A aplicação não respondeu dentro de 90 segundos."
+          docker compose ps
           exit 1
 
       - name: Teste de fumaça via proxy reverso
