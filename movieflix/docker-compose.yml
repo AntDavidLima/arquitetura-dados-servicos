@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: movieflix-postgres
+    environment:
+      POSTGRES_DB: movieflix
+      POSTGRES_USER: movieflix
+      POSTGRES_PASSWORD: movieflix
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./warehouse/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U movieflix -d movieflix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  loader:
+    image: python:3.12-slim
+    container_name: movieflix-loader
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: movieflix
+      DB_USER: movieflix
+      DB_PASSWORD: movieflix
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./scripts:/app/scripts:ro
+    working_dir: /app
+    command: sh -c "pip install --quiet psycopg2-binary && python scripts/load_data.py"
+
+volumes:
+  postgres_data:
