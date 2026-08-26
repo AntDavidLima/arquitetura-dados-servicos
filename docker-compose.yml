@@ -42,7 +42,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-app_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_pass}
     ports:
-      - "5432:5432"
+      - "5444:5432"
     volumes:
       - oltp_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
