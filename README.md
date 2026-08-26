@@ -5,13 +5,13 @@ Implementação do trabalho final da disciplina. O enunciado completo está em
 
 ## Status das entregas
 
-| Parte | Escopo | Status |
-| --- | --- | --- |
+| Parte | Escopo | Status    |
+| --- | --- |-----------|
 | 1 | Proxy reverso, frontend, API REST e banco OLTP | Concluída |
 | 2 | Esteira de CI/CD e publicação no Docker Hub | Concluída |
-| 3 | Ecossistema de dados MovieFlix (Data Lake / DW / Data Marts) | Pendente |
-| 4 | Consultas analíticas de negócio | Pendente |
-| 5 | Bônus: apontamento de DNS | Pendente |
+| 3 | Ecossistema de dados MovieFlix (Data Lake / DW / Data Marts) | Pendente  |
+| 4 | Consultas analíticas de negócio | Pendente  |
+| 5 | Bônus: apontamento de DNS | Concluída |
 
 ## Arquitetura
 
@@ -84,8 +84,8 @@ docker compose up -d --build
 
 Acessos:
 
-- Aplicação web: `http://localhost/`
-- API: `http://localhost/api/products`
+- Aplicação web: `https://escala-tech.davidblima.com.br`
+- API: `http://escala-tech.davidblima.com.br/api/products`
 
 O serviço `backend` só inicia depois que o `db_oltp` passa no `pg_isready`, via
 `healthcheck` combinado com `depends_on: condition: service_healthy`. Sem isso a API tenta
@@ -130,7 +130,7 @@ precisa de Postgres no ambiente.
 
 ## CI/CD
 
-A pipeline fica em [`.github/workflows/main.yml`](.github/workflows/main.yml) e dispara em
+A pipeline fica em [`.github/workflows/cicd.yml`](.github/workflows/cicd.yml) e dispara em
 push e pull request para a `main`, em três jobs encadeados:
 
 1. **`test`** — instala as dependências e roda o `pytest`.
@@ -153,10 +153,12 @@ Localmente resolve para `local/arqds-*:latest`; na CI, `DOCKER_NAMESPACE` vem do
 O job `push` depende de dois secrets configurados em **Settings → Secrets and variables →
 Actions** do repositório:
 
-| Secret | Origem |
-| --- | --- |
-| `DOCKERHUB_USERNAME` | usuário do Docker Hub |
-| `DOCKERHUB_TOKEN` | access token gerado em Account Settings → Security |
+| Secret               | Origem                                            |
+|----------------------|---------------------------------------------------|
+| `DOCKERHUB_USERNAME` | usuário do Docker Hub                             |
+| `DOCKERHUB_TOKEN`    | access token gerado em Account Settings → Security |
+| `POSTGRES_USER`      | usuário do banco de dados                         |
+| `POSTGRES_PASSWORD`  | senha do banco de dados                           |
 
 Enquanto os secrets não existirem, os jobs `test` e `smoke` continuam passando normalmente
 e apenas o `push` falha.
