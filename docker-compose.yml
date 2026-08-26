@@ -4,7 +4,7 @@ services:
     image: ${DOCKER_NAMESPACE:-local}/arqds-proxy:${IMAGE_TAG:-latest}
     container_name: proxy_reverso
     ports:
-      - "80:80"
+      - "8070:80"
     depends_on:
       - frontend
       - backend
