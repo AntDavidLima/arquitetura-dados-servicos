@@ -26,8 +26,8 @@ services:
       DB_HOST: db_oltp
       DB_PORT: 5432
       DB_NAME: products_db
-    env_file:
-      - .env
+      DB_USER: ${POSTGRES_USER:-app_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-app_pass}
     depends_on:
       db_oltp:
         condition: service_healthy
@@ -39,15 +39,15 @@ services:
     container_name: db_oltp
     environment:
       POSTGRES_DB: products_db
-    env_file:
-      - .env
+      POSTGRES_USER: ${POSTGRES_USER:-app_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_pass}
     ports:
       - "5432:5432"
     volumes:
       - oltp_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d products_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app_user} -d products_db"]
       interval: 2s
       timeout: 3s
       retries: 20

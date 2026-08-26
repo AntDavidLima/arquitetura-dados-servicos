@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
 jobs:
   test:
     name: Testes unitários
@@ -138,3 +142,19 @@ jobs:
         run: |
           docker compose build
           docker compose push proxy frontend backend
+
+  deploy:
+    name: Deploy para VPS
+    runs-on: self-hosted
+    needs: push
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Iniciar aplicação com Docker Compose
+        run: docker compose up -d --build --remove-orphans
+
+      - name: Limpeza de imagens não utilizadas
+        if: always()
+        run: docker image prune -f
