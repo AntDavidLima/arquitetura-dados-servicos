@@ -57,8 +57,8 @@ jobs:
           # a API responde 502. Por isso a espera inclui /api/products, que
           # só responde quando proxy, backend e banco estão todos prontos.
           for tentativa in $(seq 1 45); do
-            if curl -fsS http://localhost/ > /dev/null 2>&1 \
-              && curl -fsS http://localhost/api/products > /dev/null 2>&1; then
+            if curl -fsS http://localhost:8070/ > /dev/null 2>&1 \
+              && curl -fsS http://localhost:8070/api/products > /dev/null 2>&1; then
               echo "Frontend e API responderam na tentativa $tentativa."
               exit 0
             fi
@@ -84,13 +84,13 @@ jobs:
           }
 
           # O proxy é o ponto único de entrada: tudo passa pela porta 80.
-          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/)
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8070/)
           verificar "GET / (frontend)" "200" "$status"
 
-          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/products)
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8070/api/products)
           verificar "GET /api/products" "200" "$status"
 
-          resposta=$(curl -s -w '\n%{http_code}' -X POST http://localhost/api/products \
+          resposta=$(curl -s -w '\n%{http_code}' -X POST http://localhost:8070/api/products \
             -H 'Content-Type: application/json' \
             -d '{"name":"Smoke Test"}')
           status=$(echo "$resposta" | tail -n 1)
@@ -99,7 +99,7 @@ jobs:
 
           id=$(echo "$corpo" | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')
 
-          status=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "http://localhost/api/products/$id")
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "http://localhost:8070/api/products/$id")
           verificar "DELETE /api/products/$id" "204" "$status"
 
           echo "Teste de fumaça concluído com sucesso."
